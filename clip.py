@@ -1,4 +1,3 @@
-import json
 import os
 import sys
 from typing import Optional
@@ -7,35 +6,7 @@ import typer
 
 __version__ = "0.1.0"
 
-default_cache_file = f"{os.environ['HOME']}/.clip.json"
-cache_file = os.environ.get("CLIP_CACHE_FILE", default_cache_file) or default_cache_file
-
-
-class Clipboard:
-    registers: dict[str, str]
-
-    def load_registers(self):
-        try:
-            with open(cache_file, "r") as buf_file:
-                self.registers = json.load(buf_file)
-        except FileNotFoundError:
-            self.registers = {}
-
-    def save_registers(self):
-        with open(cache_file, "w+") as buf_file:
-            json.dump(self.registers, buf_file, ensure_ascii=False)
-
-    def __enter__(self) -> dict[str, str]:
-        self.load_registers()
-        return self.registers
-
-    def __exit__(self, exc_type, exc_value, exc_tb) -> bool:
-        if exc_type is KeyError:
-            print(f"Buffer {exc_value} not found.", file=sys.stderr)
-            return True
-
-        self.save_registers()
-
+from clipboard import Clipboard
 
 app = typer.Typer(
     name="clip",
@@ -49,21 +20,21 @@ def version_callback(value: bool):
         raise typer.Exit()
 
 
-def show_callback(value: bool):
+def set_cache_file_callback(ctx: typer.Context, value: str):
+    ctx.obj = {"cache_file": value}
+
+
+def show_callback(ctx: typer.Context, value: bool):
     if value:
-        with Clipboard() as clip:
-            if clip:
-                print(json.dumps(clip, ensure_ascii=False, indent=2, sort_keys=True))
-            else:
-                print("Clipboard is empty.")
+        with Clipboard(ctx.obj["cache_file"]) as clip:
+            clip.show_registers()
         raise typer.Exit()
 
 
-def reset_callback(value: bool):
+def reset_callback(ctx: typer.Context, value: bool):
     if value:
-        with Clipboard() as clip:
-            print("Clearing clipboard...")
-            clip.clear()
+        with Clipboard(ctx.obj["cache_file"]) as clip:
+            clip.reset_registers()
         raise typer.Exit()
 
 
@@ -71,6 +42,7 @@ def reset_callback(value: bool):
     help="A command line utility for managing multiple clipboards.",
 )
 def main(
+    ctx: typer.Context,
     register: str = typer.Argument(..., help="The register to copy to/paste from."),
     content: Optional[str] = typer.Argument(
         None if sys.stdin.isatty() else sys.stdin.read().strip(),
@@ -78,14 +50,6 @@ def main(
     ),
     clear: bool = typer.Option(
         False, "--clear", "-c", help="Clears the specified register."
-    ),
-    show: Optional[bool] = typer.Option(
-        False,
-        "--show",
-        "-s",
-        help="Show the contents of all registers as a json string.",
-        is_eager=True,
-        callback=show_callback,
     ),
     version: Optional[bool] = typer.Option(
         False,
@@ -95,16 +59,29 @@ def main(
         is_eager=True,
         help="Print version information.",
     ),
+    cache_file: Optional[str] = typer.Option(
+        f"{os.environ['HOME']}/.clip.json",
+        help="Specify the file where the register contents will be stored.",
+        envvar="CLIP_CACHE_FILE",
+        is_eager=True,
+        callback=set_cache_file_callback,
+    ),
+    show: Optional[bool] = typer.Option(
+        False,
+        "--show",
+        "-s",
+        help="Show the contents of all registers as a json string.",
+        callback=show_callback,
+    ),
     reset: bool = typer.Option(
         False,
         "--reset",
         "-r",
         help="Clears all registers.",
         callback=reset_callback,
-        is_eager=True,
     ),
 ):
-    with Clipboard() as clip:
+    with Clipboard(ctx.obj["cache_file"]) as clip:
         if content is None and not clear:
             print(clip[register])
         elif not clear:

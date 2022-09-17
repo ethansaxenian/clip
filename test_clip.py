@@ -1,0 +1,86 @@
+import json
+
+import pytest
+from typer.testing import CliRunner
+
+from clip import __version__, app
+from clipboard import Clipboard
+
+TEST_CACHE_FILE = "test_cache_file"
+
+TEST_CLIPBOARD = {"1": "foo", "2": "bar", "3": "baz"}
+
+runner = CliRunner(env={"CLIP_CACHE_FILE": TEST_CACHE_FILE})
+
+
+@pytest.fixture(autouse=True)
+def after_each():
+    yield
+    with Clipboard(TEST_CACHE_FILE) as clip:
+        clip.registers = {}
+
+
+def load_test_clipboard():
+    with Clipboard(TEST_CACHE_FILE) as clip:
+        clip.registers = TEST_CLIPBOARD
+
+
+def get_test_file_contents() -> dict[str, str]:
+    with open(TEST_CACHE_FILE, "r") as file:
+        return json.load(file)
+
+
+def test_version():
+    result = runner.invoke(app, ["--version"])
+    assert __version__ in result.stdout
+
+
+def test_show():
+    load_test_clipboard()
+    result = runner.invoke(app, ["--show"])
+    for k, v in TEST_CLIPBOARD.items():
+        assert f'"{k}": "{v}"' in result.stdout
+
+
+def test_show_empty():
+    result = runner.invoke(app, ["--show"])
+    assert "Clipboard is empty." in result.stdout
+
+
+def test_reset():
+    load_test_clipboard()
+    result = runner.invoke(app, ["--reset"])
+    assert "Clearing registers..." in result.stdout
+    clip = get_test_file_contents()
+    assert len(clip.items()) == 0
+
+
+def test_copy():
+    runner.invoke(app, ["1", "foo"])
+    clip = get_test_file_contents()
+    assert clip["1"] == "foo"
+
+
+def test_copy_replaces_existing():
+    load_test_clipboard()
+    runner.invoke(app, ["1", "replaced"])
+    clip = get_test_file_contents()
+    assert clip["1"] == "replaced"
+
+
+# def test_copy_with_stdin():
+#     runner.invoke(app, ["1"], input="piped-content\n")
+#     clip = get_test_file_contents()
+#     assert clip["1"] == "piped-content"
+
+
+def test_paste():
+    load_test_clipboard()
+    result = runner.invoke(app, ["1"])
+    assert "foo" in result.stdout
+
+
+def test_paste_bad_register():
+    load_test_clipboard()
+    result = runner.invoke(app, ["not-a-register"])
+    assert f"Buffer 'not-a-register' not found." in result.stdout
