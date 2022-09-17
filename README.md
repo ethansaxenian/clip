@@ -10,4 +10,4 @@ See [docs](./DOCS.md) or run `clip --help`.
 
 ## Configuration
 
-`clip` respects the environment variable `CLIP_CACHE`, which defaults to `$HOME/.clip.json`. This defines the file where the register contents are stored.
+`clip` respects the environment variable `CLIP_CACHE`, which defaults to `$HOME/.clip.json`. This defines the file where the register contents will be stored.
