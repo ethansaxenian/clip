@@ -1,17 +1,26 @@
 import os
 import sys
+from dataclasses import dataclass
 from typing import Optional
 
 import typer
 
+from clipboard import Clipboard
+
 __version__ = "1.0.0"
 
-from clipboard import Clipboard
+DEFAULT_CLIP_CACHE_FILE = f"{os.environ['HOME']}/.clip.json"
+CLIP_CACHE_ENV_VAR = "CLIP_CACHE_FILE"
 
 app = typer.Typer(
     name="clip",
     add_completion=False,
 )
+
+
+@dataclass
+class ClipContext:
+    cache_file_path: str
 
 
 def version_callback(value: bool):
@@ -20,20 +29,20 @@ def version_callback(value: bool):
         raise typer.Exit()
 
 
-def set_cache_file_callback(ctx: typer.Context, value: str):
-    ctx.obj = {"cache_file": value}
+def set_cache_file_callback(ctx: typer.Context, path: str):
+    ctx.obj = ClipContext(path)
 
 
 def show_callback(ctx: typer.Context, value: bool):
     if value:
-        with Clipboard(ctx.obj["cache_file"]) as clip:
+        with Clipboard(ctx.obj.cache_file_path) as clip:
             clip.show_registers()
         raise typer.Exit()
 
 
 def reset_callback(ctx: typer.Context, value: bool):
     if value:
-        with Clipboard(ctx.obj["cache_file"]) as clip:
+        with Clipboard(ctx.obj.cache_file_path) as clip:
             clip.reset_registers()
         raise typer.Exit()
 
@@ -60,16 +69,18 @@ def main(
         help="Print version information.",
     ),
     cache_file: Optional[str] = typer.Option(
-        f"{os.environ['HOME']}/.clip.json",
-        help="Specify the file where the register contents will be stored.",
-        envvar="CLIP_CACHE_FILE",
+        DEFAULT_CLIP_CACHE_FILE,
+        "--cache-file",
+        "-f",
+        help="Specify the path to the file where the register contents will be stored.",
+        envvar=CLIP_CACHE_ENV_VAR,
         is_eager=True,
         callback=set_cache_file_callback,
     ),
     show: Optional[bool] = typer.Option(
         False,
-        "--show",
-        "-s",
+        "--list",
+        "-l",
         help="Show the contents of all registers as a json string.",
         callback=show_callback,
     ),
@@ -81,9 +92,9 @@ def main(
         callback=reset_callback,
     ),
 ):
-    with Clipboard(ctx.obj["cache_file"]) as clip:
+    with Clipboard(ctx.obj.cache_file_path) as clip:
         if content is None and not clear:
-            print(clip[register])
+            typer.echo(clip[register])
         elif not clear:
             clip[register] = content
 
