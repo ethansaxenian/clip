@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "clip"
+version = "0.1.0"
+description = "A simple command-line utility that provides vim-like copy/paste with registers."
+authors = ["Ethan Saxenian <ethansaxenian@gmail.com>"]
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/ethansaxenian/clip"
+homepage = "https://github.com/ethansaxenian/clip"
+documentation = "https://github.com/ethansaxenian/clip/blob/main/DOCS.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+typer = "^0.6.1"
+
+
+[tool.poetry.scripts]
+clip = "clip:app"
+
+[tool.poetry.group.dev.dependencies]
+black = "^22.8.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
