@@ -1,4 +1,5 @@
 import json
+import os
 
 import pytest
 from typer.testing import CliRunner
@@ -13,13 +14,6 @@ TEST_CLIPBOARD = {"1": "foo", "2": "bar", "3": "baz"}
 runner = CliRunner(env={"CLIP_CACHE_FILE": TEST_CACHE_FILE})
 
 
-@pytest.fixture(autouse=True)
-def after_each():
-    yield
-    with Clipboard(TEST_CACHE_FILE) as clip:
-        clip.registers = {}
-
-
 def load_test_clipboard():
     with Clipboard(TEST_CACHE_FILE) as clip:
         clip.registers = TEST_CLIPBOARD
@@ -28,6 +22,13 @@ def load_test_clipboard():
 def get_test_file_contents() -> dict[str, str]:
     with open(TEST_CACHE_FILE, "r") as file:
         return json.load(file)
+
+
+@pytest.fixture(autouse=True)
+def after_each():
+    yield
+    with Clipboard(TEST_CACHE_FILE) as clip:
+        clip.registers = {}
 
 
 def test_version():
@@ -68,12 +69,6 @@ def test_copy_replaces_existing():
     assert clip["1"] == "replaced"
 
 
-# def test_copy_with_stdin():
-#     runner.invoke(app, ["1"], input="piped-content\n")
-#     clip = get_test_file_contents()
-#     assert clip["1"] == "piped-content"
-
-
 def test_paste():
     load_test_clipboard()
     result = runner.invoke(app, ["1"])
@@ -84,3 +79,17 @@ def test_paste_bad_register():
     load_test_clipboard()
     result = runner.invoke(app, ["not-a-register"])
     assert f"Buffer 'not-a-register' not found." in result.stdout
+
+
+def test_clear():
+    load_test_clipboard()
+    runner.invoke(app, ["-c", "1"])
+    clip = get_test_file_contents()
+    assert clip.get("1") is None
+
+
+def test_creates_file_if_not_exists():
+    os.remove(TEST_CACHE_FILE)
+    runner.invoke(app, ["1", "foo"])
+    clip = get_test_file_contents()
+    assert clip["1"] == "foo"
