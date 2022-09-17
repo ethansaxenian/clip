@@ -5,7 +5,7 @@
 poetry remove typer black
 poetry add typer-cli
 
-typer clip.py utils docs --name clip --output DOCS.md
+typer clip/main.py utils docs --name clip --output DOCS.md
 
 # finally, uninstall typer-cli and reinstall typer and black with latest versions
 poetry remove typer-cli

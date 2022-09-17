@@ -5,17 +5,13 @@ from typing import Optional
 
 import typer
 
-from clipboard import Clipboard
-
-__version__ = "1.0.0"
+from clip import __version__
+from clip.clipboard import Clipboard
 
 DEFAULT_CLIP_CACHE_FILE = f"{os.environ['HOME']}/.clip.json"
 CLIP_CACHE_ENV_VAR = "CLIP_CACHE_FILE"
 
-app = typer.Typer(
-    name="clip",
-    add_completion=False,
-)
+app = typer.Typer(name="clip", add_completion=False)
 
 
 @dataclass
@@ -52,7 +48,9 @@ def reset_callback(ctx: typer.Context, value: bool):
 )
 def main(
     ctx: typer.Context,
-    register: str = typer.Argument(..., help="The register to copy to/paste from."),
+    register: str = typer.Argument(
+        ..., help="The register to copy to/paste from.", show_default=False
+    ),
     content: Optional[str] = typer.Argument(
         None if sys.stdin.isatty() else sys.stdin.read().strip(),
         help="The content to copy (can be redirected from stdin). If no content is specified, clip performs a paste.",

@@ -4,8 +4,9 @@ import os
 import pytest
 from typer.testing import CliRunner
 
-from clip import __version__, app
-from clipboard import Clipboard
+from clip import __version__
+from clip.clipboard import Clipboard
+from clip.main import app
 
 TEST_CACHE_FILE = "test_cache_file"
 
@@ -36,15 +37,15 @@ def test_version():
     assert __version__ in result.stdout
 
 
-def test_show():
+def test_list():
     load_test_clipboard()
-    result = runner.invoke(app, ["--show"])
+    result = runner.invoke(app, ["--list"])
     for k, v in TEST_CLIPBOARD.items():
         assert f'"{k}": "{v}"' in result.stdout
 
 
-def test_show_empty():
-    result = runner.invoke(app, ["--show"])
+def test_list_empty():
+    result = runner.invoke(app, ["--list"])
     assert "Clipboard is empty." in result.stdout
 
 
